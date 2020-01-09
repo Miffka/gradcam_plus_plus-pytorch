@@ -86,8 +86,8 @@ class GradCAM(object):
 
         return saliency_map, logit
 
-    def __call__(self, input, class_idx=None, retain_graph=False):
-        return self.forward(input, class_idx, retain_graph)
+    def __call__(self, input, **kwargs):
+        return self.forward(input, **kwargs)
 
 
 class GradCAMpp(GradCAM):
@@ -111,7 +111,7 @@ class GradCAMpp(GradCAM):
         heatmap, cam_result = visualize_cam(mask, img)
     """
 
-    def forward(self, input, class_idx=None, retain_graph=False):
+    def forward(self, input, class_idx=None, head_num=None, retain_graph=False):
         """
         Args:
             input: input image with shape of (1, 3, H, W)
@@ -123,7 +123,9 @@ class GradCAMpp(GradCAM):
         """
         b, c, h, w = input.size()
 
-        logit = self.model_arch(input)
+        if 'MultiTask' in self.model_arch.__class__.__name__:
+            assert head_num is not None, 'For multitask models head number is required'
+            logit = self.model_arch(input)[head_num]
         if class_idx is None:
             score = logit[:, logit.max(1)[-1]].squeeze()
         else:
