@@ -1,3 +1,6 @@
+### New features
+Supports multitask models.
+
 ### A Simple pytorch implementation of GradCAM[1], and GradCAM++[2]
 <br>
 <p align="center">
@@ -7,7 +10,9 @@
 ### Installation
 
 ```sh
-pip install pytorch-gradcam
+git clone https://github.com/Miffka/gradcam_plus_plus-pytorch.git
+cd gradcam_plus_plus-pytorch
+pip install -e .
 ```
 
 ### Supported torchvision models
