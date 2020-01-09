@@ -48,7 +48,7 @@ class GradCAM(object):
         self.model_arch(torch.zeros(1, 3, *input_size, device=device))
         return self.activations['value'].shape[2:]
 
-    def forward(self, input, class_idx=None, retain_graph=False):
+    def forward(self, input, class_idx=None, head_num=None, retain_graph=False):
         """
         Args:
             input: input image with shape of (1, 3, H, W)
@@ -60,7 +60,9 @@ class GradCAM(object):
         """
         b, c, h, w = input.size()
 
-        logit = self.model_arch(input)
+        if 'MultiTask' in self.model_arch.__class__.__name__:
+            assert head_num is not None, 'For multitask models head number is required'
+            logit = self.model_arch(input)[head_num]
         if class_idx is None:
             score = logit[:, logit.max(1)[-1]].squeeze()
         else:
