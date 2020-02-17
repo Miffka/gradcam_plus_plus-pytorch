@@ -63,6 +63,9 @@ class GradCAM(object):
         if 'MultiTask' in self.model_arch.__class__.__name__:
             assert head_num is not None, 'For multitask models head number is required'
             logit = self.model_arch(input)[head_num]
+        else:
+            logit = self.model_arch(input)
+
         if class_idx is None:
             score = logit[:, logit.max(1)[-1]].squeeze()
         else:
