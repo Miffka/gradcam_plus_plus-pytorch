@@ -61,8 +61,10 @@ class GradCAM(object):
         b, c, h, w = input.size()
 
         if 'MultiTask' in self.model_arch.__class__.__name__:
-            assert head_num is not None, 'For multitask models head number is required'
-            logit = self.model_arch(input)[head_num]
+            logit = self.model_arch(input)
+            if type(logit) in {tuple, list}:
+                assert head_num is not None, 'For multitask models that return multiple predictions head number is required'
+                logit = logit[head_num]
         else:
             logit = self.model_arch(input)
 
