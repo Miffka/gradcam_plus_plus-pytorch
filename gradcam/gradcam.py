@@ -48,10 +48,10 @@ class GradCAM(object):
         self.model_arch(torch.zeros(1, 3, *input_size, device=device))
         return self.activations['value'].shape[2:]
 
-    def forward(self, input, class_idx=None, head_num=None, retain_graph=False):
+    def forward(self, input, threshold=None, class_idx=None, head_num=None, retain_graph=False):
         """
         Args:
-            input: input image with shape of (1, 3, H, W)
+            input: input image with shape of (batch_size, num_channels, W, H)
             class_idx (int): class index for calculating GradCAM.
                     If not specified, the class index that makes the highest model prediction score will be used.
         Return:
@@ -63,15 +63,23 @@ class GradCAM(object):
         if 'MultiTask' in self.model_arch.__class__.__name__:
             logit = self.model_arch(input)
             if type(logit) in {tuple, list}:
-                assert head_num is not None, 'For multitask models that return multiple predictions head number is required'
+                assert head_num is not None, 'Head number is required for multitask models that return multiple predictions'
                 logit = logit[head_num]
         else:
             logit = self.model_arch(input)
+        probas = F.softmax(logit, dim=1)
 
-        if class_idx is None:
-            score = logit[:, logit.max(1)[-1]].squeeze()
+        if threshold is None:
+            if class_idx is None:
+                class_idx = logit.max(1)[1].squeeze()
         else:
-            score = logit[:, class_idx].squeeze()
+            class_idx = (F.softmax(logit, dim=1)[:, 1] > threshold).long().squeeze()
+
+        score = logit[:, class_idx].squeeze()
+        if head_num == 0:
+            proba = probas[:, 1].squeeze().detach().cpu().numpy()
+        else:
+            proba = probas[:, class_idx].squeeze().detach().cpu().numpy()
 
         self.model_arch.zero_grad()
         score.backward(retain_graph=retain_graph)
@@ -80,7 +88,6 @@ class GradCAM(object):
         b, k, u, v = gradients.size()
 
         alpha = gradients.view(b, k, -1).mean(2)
-        #alpha = F.relu(gradients.view(b, k, -1)).mean(2)
         weights = alpha.view(b, k, 1, 1)
 
         saliency_map = (weights*activations).sum(1, keepdim=True)
@@ -89,7 +96,7 @@ class GradCAM(object):
         saliency_map_min, saliency_map_max = saliency_map.min(), saliency_map.max()
         saliency_map = (saliency_map - saliency_map_min).div(saliency_map_max - saliency_map_min).data
 
-        return saliency_map, logit
+        return saliency_map, proba
 
     def __call__(self, input, **kwargs):
         return self.forward(input, **kwargs)
